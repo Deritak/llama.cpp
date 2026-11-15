@@ -1126,6 +1126,14 @@ GGML_TABLE_END()
 GGML_TABLE_BEGIN(int8_t, kvalues_fp4, 16)
     0, 1, 2, 3, 4, 6, 8, 12, 0, -1, -2, -3, -4, -6, -8, -12,
 GGML_TABLE_END()
+
+// ROCmFP4 uses an E2M1-derived value set with the largest level retuned from
+// 12 to 10. Keeping this table separate from MXFP4 lets ROCmFP4 evolve
+// without changing stock MXFP4/NVFP4 behavior.
+GGML_TABLE_BEGIN(int8_t, kvalues_rocmfp4, 16)
+    0, 1, 2, 3, 4, 6, 8, 10, 0, -1, -2, -3, -4, -6, -8, -10,
+GGML_TABLE_END()
+
 #define kvalues_mxfp4 kvalues_fp4
 
 #define NGRID_IQ1S 2048

@@ -260,7 +260,9 @@ extern "C" {
         GGML_TYPE_Q1_0    = 41,
         GGML_TYPE_Q2_0    = 42,
         GGML_TYPE_F8_E4M3 = 43,
-        GGML_TYPE_COUNT   = 44,
+        GGML_TYPE_Q4_0_ROCMFP4      = 44, // ROCmFP4 experimental UE4M3 scales + packed AMD FP4 blocks
+        GGML_TYPE_Q4_0_ROCMFP4_FAST = 45, // ROCmFP4 single-scale speed layout
+        GGML_TYPE_COUNT   = 46,
     };
 
     // [TAG_GGML_PREC]
@@ -316,6 +318,8 @@ extern "C" {
         GGML_FTYPE_MOSTLY_Q1_0    = 27, // except 1d tensors
         GGML_FTYPE_MOSTLY_Q2_0    = 28, // except 1d tensors
         GGML_FTYPE_MOSTLY_F8_E4M3 = 29, // except 1d tensors
+        GGML_FTYPE_MOSTLY_Q4_0_ROCMFP4          = 100, // except 1d tensors
+        GGML_FTYPE_MOSTLY_Q4_0_ROCMFP4_FAST     = 101, // ROCmFP4 single-scale speed layout
     };
 
     // available tensor operations:

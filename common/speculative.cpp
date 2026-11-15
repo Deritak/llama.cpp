@@ -544,11 +544,12 @@ struct common_speculative_impl_draft_eagle3 : public common_speculative_impl {
     std::vector<float> features_buf;
     std::vector<float> g_embd_buf;
 
-    common_speculative_impl_draft_eagle3(const common_params_speculative & params, uint32_t n_seq)
-        : common_speculative_impl(COMMON_SPECULATIVE_TYPE_DRAFT_EAGLE3, n_seq, params.draft.n_max)
+    common_speculative_impl_draft_eagle3(const common_params_speculative & params, uint32_t n_seq,
+            common_speculative_type type = COMMON_SPECULATIVE_TYPE_DRAFT_EAGLE3)
+        : common_speculative_impl(type, n_seq, params.draft.n_max)
         , params(params.draft)
     {
-        SPC_TRC("%s", "adding speculative implementation 'draft-eagle3'\n");
+        SPC_TRC("adding speculative implementation '%s'\n", common_speculative_type_to_str(type).c_str());
         SPC_TRC("- n_max=%d, n_min=%d, p_min=%f, backend_sampling=%d\n", params.draft.n_max, params.draft.n_min, params.draft.p_min, (int) params.draft.backend_sampling);
 
         auto * ctx_tgt = this->params.ctx_tgt;
@@ -2805,6 +2806,7 @@ std::string common_speculative_type_to_str(common_speculative_type type) {
         case COMMON_SPECULATIVE_TYPE_NONE:           return "none";
         case COMMON_SPECULATIVE_TYPE_DRAFT_SIMPLE:   return "draft-simple";
         case COMMON_SPECULATIVE_TYPE_DRAFT_EAGLE3:   return "draft-eagle3";
+        case COMMON_SPECULATIVE_TYPE_DRAFT_EAGLE4:  return "draft-eagle4";
         case COMMON_SPECULATIVE_TYPE_DRAFT_MTP:      return "draft-mtp";
         case COMMON_SPECULATIVE_TYPE_DRAFT_DFLASH:   return "draft-dflash";
         case COMMON_SPECULATIVE_TYPE_DRAFT_DSPARK:   return "draft-dspark";
@@ -2863,6 +2865,18 @@ std::vector<common_speculative_type> common_speculative_types_from_gguf(const st
     }
 
     const std::string arch = gguf_get_val_str(gguf_ctx.get(), arch_id);
+
+    if (arch == "eagle3") {
+        if (gguf_find_tensor(gguf_ctx.get(), "output_lr.weight") < 0) {
+            return {};
+        }
+
+        SPC_INF("auto-detected speculative type '%s' from the draft model metadata\n",
+                common_speculative_type_to_str(COMMON_SPECULATIVE_TYPE_DRAFT_EAGLE4).c_str());
+
+        return { COMMON_SPECULATIVE_TYPE_DRAFT_EAGLE4 };
+    }
+
     if (arch != "dflash") {
         const uint32_t block_count = gguf_get_val_u32(gguf_ctx.get(), gguf_find_key(gguf_ctx.get(), (arch + ".block_count").c_str()));
 
@@ -2896,6 +2910,7 @@ int32_t common_speculative_n_max(const common_params_speculative * spec) {
         switch (type) {
             case COMMON_SPECULATIVE_TYPE_DRAFT_SIMPLE:
             case COMMON_SPECULATIVE_TYPE_DRAFT_EAGLE3:
+            case COMMON_SPECULATIVE_TYPE_DRAFT_EAGLE4:
             case COMMON_SPECULATIVE_TYPE_DRAFT_MTP:
             case COMMON_SPECULATIVE_TYPE_DRAFT_DFLASH:
             case COMMON_SPECULATIVE_TYPE_DRAFT_DSPARK:
@@ -3206,7 +3221,7 @@ common_speculative * common_speculative_init(common_params_speculative & params,
         };
 
         // when adding a new type - update here the logic above
-        static_assert(COMMON_SPECULATIVE_TYPE_COUNT == 13);
+        static_assert(COMMON_SPECULATIVE_TYPE_COUNT == 14);
 
         // this list here defines the priority of the speculators
         // the one with highest priority are listed first
@@ -3218,6 +3233,7 @@ common_speculative * common_speculative_init(common_params_speculative & params,
 
         add_config_if_enabled(COMMON_SPECULATIVE_TYPE_DRAFT_SIMPLE);
         add_config_if_enabled(COMMON_SPECULATIVE_TYPE_DRAFT_EAGLE3,   params.draft.ctx_dft != nullptr);
+        add_config_if_enabled(COMMON_SPECULATIVE_TYPE_DRAFT_EAGLE4, params.draft.ctx_dft != nullptr);
         add_config_if_enabled(COMMON_SPECULATIVE_TYPE_DRAFT_MTP,      params.draft.ctx_dft != nullptr);
         add_config_if_enabled(COMMON_SPECULATIVE_TYPE_DRAFT_DFLASH,   params.draft.ctx_dft != nullptr);
         add_config_if_enabled(COMMON_SPECULATIVE_TYPE_DRAFT_DSPARK,   params.draft.ctx_dft != nullptr);
@@ -3237,6 +3253,11 @@ common_speculative * common_speculative_init(common_params_speculative & params,
             }
             case COMMON_SPECULATIVE_TYPE_DRAFT_EAGLE3: {
                 impls.push_back(std::make_unique<common_speculative_impl_draft_eagle3>(config.params, n_seq));
+                break;
+            }
+            case COMMON_SPECULATIVE_TYPE_DRAFT_EAGLE4: {
+                impls.push_back(std::make_unique<common_speculative_impl_draft_eagle3>(
+                        config.params, n_seq, COMMON_SPECULATIVE_TYPE_DRAFT_EAGLE4));
                 break;
             }
             case COMMON_SPECULATIVE_TYPE_DRAFT_MTP: {

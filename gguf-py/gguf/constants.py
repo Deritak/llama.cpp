@@ -178,6 +178,9 @@ class Keys:
         HAS_CONFIDENCE_HEAD               = "{arch}.has_confidence_head"
         NORM_BEFORE_RESIDUAL              = "{arch}.norm_before_residual"
         NORM_BEFORE_FC                    = "{arch}.norm_before_fc"
+        FC_NORM                           = "{arch}.fc_norm"
+        NORM_OUTPUT                       = "{arch}.norm_output"
+        LM_HEAD_CANDIDATES                = "{arch}.lm_head_candidates"
         REALTIME_DELAY_TOKENS             = "{arch}.realtime_delay_tokens"
         CLASSIFIER_FREE_GUIDANCE          = "{arch}.classifier_free_guidance"
 
@@ -1451,6 +1454,8 @@ class MODEL_TENSOR(IntEnum):
     # eagle3
     FC                     = auto()  # feature fusion layer
     D2T                    = auto()  # draft to target vocabulary mapping
+    OUTPUT_LR_DOWN         = auto()
+    OUTPUT_LR              = auto()
     # dspark
     DSPARK_MARKOV_W1       = auto()  # markov head: prev-token embed
     DSPARK_MARKOV_W2       = auto()  # markov head: bias projection
@@ -2458,6 +2463,8 @@ TENSOR_NAMES: dict[MODEL_TENSOR, str] = {
     MODEL_TENSOR.LILICORR_IN_HEAD:                      "lilicorr.in_head",
     MODEL_TENSOR.LILICORR_ANCHOR_OUT_HEAD:              "lilicorr.anchor_out_head",
     MODEL_TENSOR.D2T:                       "d2t",
+    MODEL_TENSOR.OUTPUT_LR_DOWN:            "output_lr_down",
+    MODEL_TENSOR.OUTPUT_LR:                 "output_lr",
     MODEL_TENSOR.ATTN_V_GATE:               "blk.{bid}.attn_v_gate",
     MODEL_TENSOR.ATTN_V_EXP:                "blk.{bid}.attn_v_exps",
 }
@@ -6217,6 +6224,8 @@ MODEL_TENSORS: dict[MODEL_ARCH, list[MODEL_TENSOR]] = {
         MODEL_TENSOR.FC,
         MODEL_TENSOR.ENC_OUTPUT_NORM,
         MODEL_TENSOR.D2T,
+        MODEL_TENSOR.OUTPUT_LR_DOWN,
+        MODEL_TENSOR.OUTPUT_LR,
     ],
     MODEL_ARCH.DFLASH: [
         MODEL_TENSOR.ATTN_POST_NORM,
