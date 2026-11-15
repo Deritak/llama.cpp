@@ -2867,18 +2867,18 @@ std::vector<common_speculative_type> common_speculative_types_from_gguf(const st
 
     const std::string arch = gguf_get_val_str(gguf_ctx.get(), arch_id);
 
-    if (arch == "eagle3") {
-        if (gguf_find_tensor(gguf_ctx.get(), "output_lr.weight") < 0) {
-            return {};
-        }
-
+    if (arch == "eagle4") {
         SPC_INF("auto-detected speculative type '%s' from the draft model metadata\n",
                 common_speculative_type_to_str(COMMON_SPECULATIVE_TYPE_DRAFT_EAGLE4).c_str());
 
         return { COMMON_SPECULATIVE_TYPE_DRAFT_EAGLE4 };
     }
 
-    if (arch == "eagle4") {
+    if (arch == "eagle3") {
+        if (gguf_find_tensor(gguf_ctx.get(), "output_lr.weight") < 0) {
+            return {};
+        }
+
         SPC_INF("auto-detected speculative type '%s' from the draft model metadata\n",
                 common_speculative_type_to_str(COMMON_SPECULATIVE_TYPE_DRAFT_EAGLE4).c_str());
 

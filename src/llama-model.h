@@ -900,6 +900,9 @@ struct llama_model {
     struct ggml_tensor * output_lr_down = nullptr;
     struct ggml_tensor * output_lr      = nullptr;
 
+    // one RMSNorm per extracted target layer (fc_norm.N.weight), used when the stacked enc.output_norm is absent
+    struct ggml_tensor * fc_norm_layers[3] = {nullptr, nullptr, nullptr};
+
     // dspark
     struct ggml_tensor * dspark_markov_w1   = nullptr;
     struct ggml_tensor * dspark_markov_w2   = nullptr;

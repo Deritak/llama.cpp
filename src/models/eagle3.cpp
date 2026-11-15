@@ -81,7 +81,18 @@ void llama_model_eagle3::load_arch_tensors(llama_model_loader &) {
         output_norm_enc = create_tensor(tn(LLM_TENSOR_ENC_OUTPUT_NORM, "weight"), {n_embd_inp}, 0);
     } else if (hparams.fc_norm) {
         const int64_t n_tgt = target_layer_ids.size();
-        output_norm_enc = create_tensor(tn(LLM_TENSOR_ENC_OUTPUT_NORM, "weight"), {n_embd_inp / n_tgt, n_tgt}, 0);
+        if (ml->get_tensor_meta(tn(LLM_TENSOR_ENC_OUTPUT_NORM, "weight").str().c_str())) {
+            output_norm_enc = create_tensor(tn(LLM_TENSOR_ENC_OUTPUT_NORM, "weight"), {n_embd_inp / n_tgt, n_tgt}, 0);
+        } else {
+            // one norm per extracted target layer, e.g. LM Studio's Eagle4 GGUF
+            for (size_t k = 0; k < (size_t) n_tgt; k++) {
+                const std::string name = tn(LLM_TENSOR_FC_NORM, "weight", (int) k).str();
+                if (!ml->get_tensor_meta(name.c_str())) {
+                    throw std::runtime_error("EAGLE3: fc_norm is set but " + name + " is missing, expected it or the stacked enc.output_norm tensor");
+                }
+                fc_norm_layers[k] = create_tensor(tn(LLM_TENSOR_FC_NORM, "weight", (int) k), {n_embd}, 0);
+            }
+        }
     }
 
     // Output layer (uses draft vocab size)
@@ -171,11 +182,31 @@ llama_model_eagle3::graph<true>::graph(const llm_graph_params & params) : llm_gr
         cur = build_norm(cur, model.output_norm_enc, NULL, LLM_NORM_RMS, -1);
         cb(cur, "enc_input_norm", -1);
     } else if (hparams.fc_norm) {
-        const int64_t n_embd_tgt = model.output_norm_enc->ne[0];
-        cur = ggml_reshape_3d(ctx0, cur, n_embd_tgt, model.output_norm_enc->ne[1], n_tokens);
-        cur = build_norm(cur, model.output_norm_enc, NULL, LLM_NORM_RMS, -1);
-        cur = ggml_reshape_2d(ctx0, cur, hparams.n_embd_inp_enc(), n_tokens);
-        cb(cur, "enc_input_norm", -1);
+        if (model.output_norm_enc) {
+            const int64_t n_embd_tgt = model.output_norm_enc->ne[0];
+            cur = ggml_reshape_3d(ctx0, cur, n_embd_tgt, model.output_norm_enc->ne[1], n_tokens);
+            cur = build_norm(cur, model.output_norm_enc, NULL, LLM_NORM_RMS, -1);
+            cur = ggml_reshape_2d(ctx0, cur, hparams.n_embd_inp_enc(), n_tokens);
+            cb(cur, "enc_input_norm", -1);
+        } else {
+            // one norm per extracted target layer: normalize each feature block and concat them back
+            const int64_t n_blk = model.fc_norm_layers[0]->ne[0];
+            GGML_ASSERT(n_blk * (int64_t) target_layer_ids.size() == hparams.n_embd_inp_enc());
+
+            ggml_tensor * cur2 = nullptr;
+            for (size_t k = 0; k < target_layer_ids.size(); k++) {
+                GGML_ASSERT(model.fc_norm_layers[k] && "EAGLE3: fc_norm.N.weight is missing");
+
+                ggml_tensor * part = ggml_view_2d(ctx0, cur, n_blk, n_tokens, cur->nb[1], (size_t) k * n_blk * sizeof(float));
+                part = ggml_cont(ctx0, part);
+                part = build_norm(part, model.fc_norm_layers[k], NULL, LLM_NORM_RMS, -1);
+                cb(part, "enc_input_norm", -1);
+
+                cur2 = cur2 ? ggml_concat(ctx0, cur2, part, 0) : part;
+            }
+            cur = cur2;
+            cb(cur, "enc_input_norm", -1);
+        }
     }
 
     // Feature fusion layer
