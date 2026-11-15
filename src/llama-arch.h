@@ -184,6 +184,7 @@ enum llm_arch {
     LLM_ARCH_LIMITE,
     LLM_ARCH_RICURSIVE,
     LLM_ARCH_INKLING2,
+    LLM_ARCH_EAGLE4,
     LLM_ARCH_UNKNOWN,
 };
 

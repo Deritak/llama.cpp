@@ -2878,6 +2878,13 @@ std::vector<common_speculative_type> common_speculative_types_from_gguf(const st
         return { COMMON_SPECULATIVE_TYPE_DRAFT_EAGLE4 };
     }
 
+    if (arch == "eagle4") {
+        SPC_INF("auto-detected speculative type '%s' from the draft model metadata\n",
+                common_speculative_type_to_str(COMMON_SPECULATIVE_TYPE_DRAFT_EAGLE4).c_str());
+
+        return { COMMON_SPECULATIVE_TYPE_DRAFT_EAGLE4 };
+    }
+
     if (arch != "dflash") {
         const uint32_t block_count = gguf_get_val_u32(gguf_ctx.get(), gguf_find_key(gguf_ctx.get(), (arch + ".block_count").c_str()));
 
